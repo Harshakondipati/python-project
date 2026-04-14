@@ -21,7 +21,7 @@ if 'Date' in df.columns:
 # -----------------------------
 # DATA EXPLORATION
 # -----------------------------
-print(df.head())
+
 print(df.info())
 print(df.describe())
 
