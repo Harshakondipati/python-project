@@ -10,7 +10,7 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 # -----------------------------
 # LOAD DATA
-# -----------------------------
+# -------------------
 df = pd.read_excel(r"C:\Users\HARSHA KONDIPATI\Downloads\python project\stock_prediction_dataset.xlsx")
 
 # Convert date column if exists
