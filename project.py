@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, accuracy_score
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-# -----------------------------
+# first thing is to clean the data
 #eda
 # LOAD DATA
 # -------------------
