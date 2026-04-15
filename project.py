@@ -9,6 +9,7 @@ from sklearn.metrics import mean_squared_error, accuracy_score
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 # -----------------------------
+#eda
 # LOAD DATA
 # -------------------
 df = pd.read_excel(r"C:\Users\HARSHA KONDIPATI\Downloads\python project\stock_prediction_dataset.xlsx")
