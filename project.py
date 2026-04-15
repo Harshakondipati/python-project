@@ -43,7 +43,7 @@ if 'StockPrice' in df.columns:
     df['Returns'] = df['Returns'].fillna(0)
 
 # -----------------------------
-# VISUALIZATION
+# DATA VISUALIZATION
 # -----------------------------
 if 'StockPrice' in df.columns:
     plt.figure()
