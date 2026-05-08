@@ -1,139 +1,316 @@
+# Stock Market Analysis Project
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from scipy import stats
+from scipy.stats import zscore, ttest_ind, shapiro
 
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 
-# -----------------------------
-# LOAD DATA
-# -----------------------------
-df = pd.read_excel(r"C:\Users\HARSHA KONDIPATI\Downloads\python project\stock_prediction_dataset.xlsx")
 
-# -----------------------------
-# DATE HANDLING
-# -----------------------------
-if 'Date' in df.columns:
-    df['Date'] = pd.to_datetime(df['Date'])
-    df.set_index('Date', inplace=True)
-    df = df.sort_index()
+# loading dataset
+data = pd.read_excel("stock_prediction_dataset.xlsx")
 
-# -----------------------------
-# DATA CLEANING
-# -----------------------------
-df = df.ffill()
-df = df.dropna()
+print("\nDataset Information\n")
+print(data.info())
 
-# Convert sentiment to numeric
-sentiment_cols = ['SocialMediaSentiment', 'FinancialNewsSentiment', 'BlogSentiment']
+print("\nFirst 5 Records\n")
+print(data.head())
+
+print("\nSummary Statistics\n")
+print(data.describe())
+
+
+# converting date column
+data["Date"] = pd.to_datetime(data["Date"])
+
+# sorting values based on date
+data = data.sort_values("Date")
+
+# setting date as index
+data.set_index("Date", inplace=True)
+
+
+# checking missing values
+print("\nMissing Values\n")
+print(data.isnull().sum())
+
+# filling missing values
+data = data.ffill()
+
+
+# sentiment conversion
+sentiment_map = {
+    "Negative": -1,
+    "Neutral": 0,
+    "Positive": 1
+}
+
+sentiment_cols = [
+    "SocialMediaSentiment",
+    "FinancialNewsSentiment",
+    "BlogSentiment"
+]
 
 for col in sentiment_cols:
-    if col in df.columns:
-        df[col] = df[col].map({'Negative': -1, 'Neutral': 0, 'Positive': 1})
+    data[col] = data[col].map(sentiment_map)
 
-# -----------------------------
-# FEATURE ENGINEERING
-# -----------------------------
-if 'StockPrice' in df.columns:
-    df['Returns'] = df['StockPrice'].pct_change().fillna(0)
+print("\nUpdated Dataset\n")
+print(data.head())
 
-# -----------------------------
-# EDA
-# -----------------------------
-print(df.describe())
 
-# -----------------------------
-# VISUALIZATION
-# -----------------------------
-if 'StockPrice' in df.columns:
-    plt.figure()
-    plt.plot(df.index, df['StockPrice'])
-    plt.title("Stock Price Over Time")
-    plt.xlabel("Date")
-    plt.ylabel("Price")
-    plt.show()
+# feature engineering
+data["Returns"] = data["StockPrice"].pct_change()
 
-plt.figure()
-sns.histplot(df['Returns'], kde=True)
-plt.title("Returns Distribution")
+# replacing NaN in returns
+data["Returns"] = data["Returns"].fillna(0)
+
+print("\nReturns Column Added\n")
+print(data.head())
+
+
+# ======================================================
+# VISUALIZATION SECTION
+
+
+# stock price over time
+plt.figure(figsize=(12, 5))
+
+plt.plot(data.index, data["StockPrice"])
+
+plt.title("Stock Price Over Time")
+plt.xlabel("Date")
+plt.ylabel("Stock Price")
+
+plt.grid(True)
+
 plt.show()
 
-plt.figure()
-sns.boxplot(x=df['Returns'])
+
+# historical vs current stock price
+plt.figure(figsize=(12, 5))
+
+plt.plot(
+    data.index,
+    data["HistoricalStockPrice"],
+    label="Historical Price"
+)
+
+plt.plot(
+    data.index,
+    data["StockPrice"],
+    label="Current Price"
+)
+
+plt.title("Historical vs Current Stock Price")
+
+plt.xlabel("Date")
+plt.ylabel("Price")
+
+plt.legend()
+
+plt.show()
+
+
+# returns distribution graph
+plt.figure(figsize=(10, 5))
+
+sns.histplot(   
+    data["Returns"],
+    bins=30,
+    kde=True
+)
+
+plt.title("Distribution of Returns")
+
+plt.xlabel("Returns")
+plt.ylabel("Frequency")
+
+plt.show()
+
+
+# boxplot for returns
+plt.figure(figsize=(8, 4))
+
+sns.boxplot(x=data["Returns"])
+
 plt.title("Returns Boxplot")
+
 plt.show()
 
-# -----------------------------
-# CORRELATION
-# -----------------------------
-corr = df.corr(numeric_only=True)
-print(corr)
 
-plt.figure()
-sns.heatmap(corr, annot=True)
+# sentiment count plot
+plt.figure(figsize=(10, 5))
+
+sns.countplot(
+    x="SocialMediaSentiment",
+    data=data
+)
+
+plt.title("Social Media Sentiment Distribution")
+
+plt.xlabel("Sentiment")
+plt.ylabel("Count")
+
+plt.show()
+
+
+# correlation analysis
+corr_matrix = data.corr(numeric_only=True)
+
+print("\nCorrelation Matrix\n")
+print(corr_matrix)
+
+plt.figure(figsize=(10, 7))
+
+sns.heatmap(
+    corr_matrix,
+    annot=True,
+    cmap="coolwarm"
+)
+
 plt.title("Correlation Heatmap")
+
 plt.show()
 
-# -----------------------------
-# OUTLIER DETECTION (Z-SCORE)
-# -----------------------------
-numeric_df = df.select_dtypes(include=np.number)
-z_scores = np.abs(stats.zscore(numeric_df))
+
+# ======================================================
+# OUTLIER DETECTION
+
+
+numeric_data = data.select_dtypes(include=np.number)
+
+z_scores = np.abs(zscore(numeric_data))
+
 outliers = np.where(z_scores > 3)
-print("Outliers indices:", outliers)
 
-# -----------------------------
-# HYPOTHESIS TESTING (T-TEST + NORMALITY)
-# -----------------------------
-mid = len(df) // 2
-returns1 = df['Returns'][:mid]
-returns2 = df['Returns'][mid:]
+print("\nOutlier Detection\n")
+print(outliers)
 
-t_stat, p_val = stats.ttest_ind(returns1, returns2)
-print("T-test:", t_stat, p_val)
 
-if len(df) <= 5000:
-    shapiro_stat, shapiro_p = stats.shapiro(df['Returns'])
-    print("Shapiro:", shapiro_stat, shapiro_p)
+# ======================================================
+# HYPOTHESIS TESTING
 
-# -----------------------------
-# REGRESSION MODEL (PREDICT RETURNS)
-# -----------------------------
-features = df.select_dtypes(include=np.number).drop(columns=['Returns'], errors='ignore')
-target = df['Returns']
 
-X = features.dropna()
-y = target.loc[X.index]
+mid_point = len(data) // 2
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+first_half = data["Returns"][:mid_point]
 
+second_half = data["Returns"][mid_point:]
+
+t_stat, p_value = ttest_ind(first_half, second_half)
+
+print("\nT-Test Result\n")
+
+print("T Statistic :", t_stat)
+print("P Value :", p_value)
+
+
+# shapiro normality test
+sample_returns = data["Returns"].sample(
+    5000,
+    random_state=42
+)
+
+shapiro_stat, shapiro_p = shapiro(sample_returns)
+
+print("\nShapiro Normality Test\n")
+
+print("Statistic :", shapiro_stat)
+print("P Value :", shapiro_p)
+
+
+# ======================================================
+# MACHINE LEARNING SECTION
+
+
+# selecting features
+X = data[[
+    "SocialMediaSentiment",
+    "FinancialNewsSentiment",
+    "BlogSentiment",
+    "ForumSentiment",
+    "HistoricalStockPrice"
+]]
+
+# target variable
+y = data["StockPrice"]
+
+
+# splitting data
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    shuffle=False,
+    random_state=42
+)
+
+
+# model creation
 model = LinearRegression()
+
+# training model
 model.fit(X_train, y_train)
 
+
+# predictions
 y_pred = model.predict(X_test)
 
-# -----------------------------
-# EVALUATION
-# -----------------------------
+
+# ======================================================
+# MODEL EVALUATION
+
+
 mse = mean_squared_error(y_test, y_pred)
+
 r2 = r2_score(y_test, y_pred)
 
-print("MSE:", mse)
-print("R2 Score:", r2)
+print("\nModel Evaluation\n")
 
-# Feature importance
-print("Feature Importance:")
-print(pd.Series(model.coef_, index=X.columns))
+print("Mean Squared Error :", mse)
 
-# -----------------------------
-# ACTUAL VS PREDICTED
-# -----------------------------
-plt.figure()
-plt.plot(y_test.values, label="Actual")
-plt.plot(y_pred, label="Predicted")
+print("R2 Score :", r2)
+
+
+# actual vs predicted graph
+plt.figure(figsize=(12, 5))
+
+plt.plot(
+    y_test.values,
+    label="Actual Price"
+)
+
+plt.plot(
+    y_pred,
+    label="Predicted Price"
+)
+
+plt.title("Actual vs Predicted Stock Price")
+
+plt.xlabel("Observations")
+plt.ylabel("Stock Price")
+
 plt.legend()
-plt.title("Actual vs Predicted Returns")
+
 plt.show()
+
+
+# scatter plot
+plt.figure(figsize=(7, 5))
+
+plt.scatter(y_test, y_pred)
+
+plt.xlabel("Actual Stock Price")
+
+plt.ylabel("Predicted Stock Price")
+
+plt.title("Actual vs Predicted Scatter Plot")
+
+plt.show()
+
+
+
